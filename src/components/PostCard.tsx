@@ -26,16 +26,34 @@ import {
 type Posts = Awaited<ReturnType<typeof getPosts>>;
 type Post = Posts[number];
 
-function PostCard({ post, userId }: { post: Post; userId: string | null }) {
+// Create a flexible post type that can handle both full posts and liked posts
+type FlexiblePost = {
+  id: string;
+  content: string;
+  image: string | null;
+  createdAt: Date;
+  authorId: string;
+  author: {
+    id: string;
+    name: string | null;
+    username: string;
+    image: string | null;
+  };
+  likes?: { userId: string }[];
+  comments?: any[];
+  _count?: { likes: number; comments: number };
+};
+
+function PostCard({ post, userId }: { post: Post | FlexiblePost; userId: string | null }) {
   const { user } = useUser();
   const [newComment, setNewComment] = useState("");
   const [isCommenting, setIsCommenting] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [hasLiked, setHasLiked] = useState(
-    post.likes.some((like) => like.userId === userId)
+    post.likes?.some((like) => like.userId === userId) || false
   );
-  const [optimisticLikes, setOptmisticLikes] = useState(post._count.likes);
+  const [optimisticLikes, setOptmisticLikes] = useState(post._count?.likes || 0);
   const [showComments, setShowComments] = useState(false);
 
   const handleLiked = async () => {
@@ -46,8 +64,8 @@ function PostCard({ post, userId }: { post: Post; userId: string | null }) {
       setOptmisticLikes((prev) => prev + (hasLiked ? -1 : 1));
       await toggleLike(post.id);
     } catch (error) {
-      setOptmisticLikes(post._count.likes);
-      setHasLiked(post.likes.some((like) => like.userId === userId));
+      setOptmisticLikes(post._count?.likes || 0);
+      setHasLiked(post.likes?.some((like) => like.userId === userId) || false);
     } finally {
       setIsLiking(false);
     }
@@ -182,7 +200,7 @@ function PostCard({ post, userId }: { post: Post; userId: string | null }) {
                   showComments ? "fill-blue-500 text-blue-500" : ""
                 }`}
               />
-              <span>{post.comments.length}</span>
+              <span>{post.comments?.length || 0}</span>
             </Button>
           </div>
 
@@ -190,7 +208,7 @@ function PostCard({ post, userId }: { post: Post; userId: string | null }) {
             <div className="space-y-4 pt-4 border-t">
               <div className="space-y-4">
                 {/* DISPLAY COMMENTS */}
-                {post.comments.map((comment) => (
+                {post.comments?.map((comment) => (
                   <div key={comment.id} className="flex space-x-3">
                     <Avatar className="size-8 flex-shrink-0">
                       <AvatarImage
